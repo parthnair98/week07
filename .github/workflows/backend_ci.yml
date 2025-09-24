@@ -11,7 +11,7 @@ on:
       - '.github/workflows/backend_ci.yml'
 
 env:
-  # e.g., sit722devop.azurecr.io (set as repo secret)
+  # Must be set as a GitHub secret, e.g. sit722devop.azurecr.io
   ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
 
@@ -94,23 +94,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Ensure buildx is available and active
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Azure Login
         uses: azure/login@v1
         with:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      # Use registry NAME here (not the login server)
       - name: Login to Azure Container Registry
-        run: az acr login --name sit722devop  # registry NAME, not login server
+        run: az acr login --name sit722devop
 
-      - name: Build and Push Product Service Image
-        run: |
-          docker buildx build -f backend/product_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest backend/product_service --load
-          docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:latest
+      # ---- Product Service ----
+      - name: Build Product Service Image
+        run: docker buildx build -f backend/product_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest backend/product_service --load
 
-      - name: Build and Push Order Service Image
-        run: |
-          docker buildx build -f backend/order_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest backend/order_service --load
-          docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
+      - name: Push Product Service Image
+        run: docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:latest
+
+      # ---- Order Service ----
+      - name: Build Order Service Image
+        run: docker buildx build -f backend/order_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest backend/order_service --load
+
+      - name: Push Order Service Image
+        run: docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
 
       - name: Logout from Azure
         run: az logout
