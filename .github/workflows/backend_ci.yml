@@ -11,12 +11,14 @@ on:
       - '.github/workflows/backend_ci.yml'
 
 env:
+  # e.g., sit722devop.azurecr.io (set as repo secret)
   ACR_LOGIN_SERVER: ${{ secrets.ACR_LOGIN_SERVER }}
   IMAGE_TAG: ${{ github.sha }}-${{ github.run_id }}
 
 jobs:
   test_and_lint_backends:
     runs-on: ubuntu-latest
+
     services:
       product_db:
         image: postgres:15
@@ -87,6 +89,7 @@ jobs:
   build_and_push_images:
     runs-on: ubuntu-latest
     needs: test_and_lint_backends
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -97,20 +100,16 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to Azure Container Registry
-        run: az acr login --name sit722devop   # ✅ registry name only
+        run: az acr login --name sit722devop  # registry NAME, not login server
 
       - name: Build and Push Product Service Image
         run: |
-          docker buildx build -f backend/product_service/Dockerfile \
-            -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest \
-            backend/product_service --load
+          docker buildx build -f backend/product_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest backend/product_service --load
           docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:latest
 
       - name: Build and Push Order Service Image
         run: |
-          docker buildx build -f backend/order_service/Dockerfile \
-            -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest \
-            backend/order_service --load
+          docker buildx build -f backend/order_service/Dockerfile -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest backend/order_service --load
           docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
 
       - name: Logout from Azure
