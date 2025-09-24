@@ -1,5 +1,4 @@
 # week07/.github/workflows/backend_ci.yml
-# Test run
 name: Backend CI - Test, Build and Push Images to ACR
 
 on:
@@ -98,16 +97,25 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Login to Azure Container Registry
-        run: az acr login --name sit722devop   # ✅ Fixed here
+        run: az acr login --name sit722devop   # ✅ registry name only
+
+      - name: Debug repo contents
+        run: ls -R backend
 
       - name: Build and Push Product Service Image
         run: |
-          docker buildx build -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest ./backend/product_service --load
+          docker buildx build \
+            -f backend/product_service/Dockerfile \
+            -t ${{ env.ACR_LOGIN_SERVER }}/product_service:latest \
+            backend/product_service --load
           docker push ${{ env.ACR_LOGIN_SERVER }}/product_service:latest
 
       - name: Build and Push Order Service Image
         run: |
-          docker buildx build -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest ./backend/order_service --load
+          docker buildx build \
+            -f backend/order_service/Dockerfile \
+            -t ${{ env.ACR_LOGIN_SERVER }}/order_service:latest \
+            backend/order_service --load
           docker push ${{ env.ACR_LOGIN_SERVER }}/order_service:latest
 
       - name: Logout from Azure
